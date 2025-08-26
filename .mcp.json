@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcp-installer": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@anaisbetts/mcp-installer"
+      ],
+      "env": {}
+    }
+  }
+}
