@@ -1,0 +1,14 @@
+# 로그인 세션(절대 커밋 금지)
+browser_profiles/
+
+# 실행 산출물
+logs/
+upload_state.json
+__pycache__/
+*.pyc
+
+# 영상 파일
+videos/**/*.mp4
+videos/**/*.mov
+videos/**/*.m4v
+videos/**/*.webm

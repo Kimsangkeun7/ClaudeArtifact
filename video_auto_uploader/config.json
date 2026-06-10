@@ -1,0 +1,45 @@
+{
+  "watch_folder": "videos/inbox",
+  "done_folder": "videos/done",
+  "failed_folder": "videos/failed",
+  "check_interval_seconds": 300,
+  "file_stable_seconds": 10,
+  "max_retries": 3,
+  "video_extensions": [".mp4", ".mov", ".m4v", ".webm"],
+
+  "browser": {
+    "headless": false,
+    "channel": "chrome",
+    "profiles_dir": "browser_profiles",
+    "slow_mo_ms": 150,
+    "locale": "ko-KR"
+  },
+
+  "platforms": {
+    "facebook": {
+      "enabled": true,
+      "upload_timeout_seconds": 600
+    },
+    "instagram": {
+      "enabled": true,
+      "upload_timeout_seconds": 600
+    },
+    "tiktok": {
+      "enabled": true,
+      "upload_timeout_seconds": 600
+    },
+    "naver_clip": {
+      "enabled": false,
+      "upload_timeout_seconds": 600,
+      "_참고": "네이버 클립은 현재 PC 웹 업로드를 공식 지원하지 않습니다(모바일 앱 전용). 네이버가 PC 업로드를 열면 아래 URL과 셀렉터만 수정해서 enabled를 true로 바꾸세요.",
+      "upload_url": "https://m.blog.naver.com",
+      "mobile_emulation": true,
+      "selectors": {
+        "file_input": ["input[type='file'][accept*='video']", "input[type='file']"],
+        "title_input": ["input[placeholder*='제목']", "textarea[placeholder*='제목']"],
+        "description_input": ["textarea[placeholder*='설명']", "div[contenteditable='true']"],
+        "submit_button": ["button:has-text('올리기')", "button:has-text('등록')", "button:has-text('업로드')"]
+      }
+    }
+  }
+}
