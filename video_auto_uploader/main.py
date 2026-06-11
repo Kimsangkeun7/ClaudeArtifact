@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
-"""영상 멀티플랫폼 자동 업로더.
+"""영상 멀티플랫폼·멀티계정 자동 업로더.
 
 지정한 폴더(watch_folder)를 주기적으로 검사해서 새 영상이 있으면
-페이스북 릴스 / 인스타그램 릴스 / 틱톡 (+옵션: 네이버 클립)에 차례로 업로드한다.
+config.json에 등록된 계정 그룹(예: 심리1, 심리2)의 플랫폼들
+(페이스북 릴스 / 인스타그램 릴스 / 틱톡 / 옵션: 네이버 클립)에 차례로 업로드한다.
+
+영상을 올릴 계정 그룹 지정 방법 (우선순위 순):
+  1. 사이드카 .txt에 `계정: 심리2` 줄 또는 .json에 "account": "심리2"
+  2. 감시 폴더 안의 계정 이름 하위 폴더 (예: videos/inbox/심리2/영상.mp4)
+  3. 둘 다 없으면 config.json의 default_account
 
 사용법:
     python main.py            # 무한 감시 루프 (check_interval_seconds 간격)
@@ -14,10 +20,10 @@ import shutil
 import time
 from pathlib import Path
 
-from uploader import common
-from uploader.common import (BASE_DIR, NotLoggedInError, load_config,
-                             load_metadata, load_state, open_page, save_state,
-                             save_failure_screenshot, setup_logger,
+from uploader.common import (BASE_DIR, NotLoggedInError, account_platforms,
+                             get_accounts, load_config, load_metadata,
+                             load_state, open_page, platform_settings,
+                             save_failure_screenshot, save_state, setup_logger,
                              sidecar_files)
 from uploader.platforms import facebook, instagram, naver_clip, tiktok
 
@@ -37,20 +43,29 @@ def resolve_dir(cfg_value: str) -> Path:
     return p
 
 
-def find_stable_videos(watch_dir: Path, cfg, logger) -> list[Path]:
-    """복사가 끝난(크기가 더 이상 변하지 않는) 영상만 골라낸다."""
+def collect_videos(watch_dir: Path, cfg) -> list[Path]:
+    """감시 폴더 바로 아래 + 계정 폴더(1단계 하위) 안의 영상을 모두 찾는다."""
     exts = {e.lower() for e in cfg.get("video_extensions", [".mp4"])}
-    candidates = sorted(
-        p for p in watch_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in exts
-    )
-    if not candidates:
-        return []
+    found = []
+    for p in sorted(watch_dir.iterdir()):
+        if p.is_file() and p.suffix.lower() in exts:
+            found.append(p)
+        elif p.is_dir():
+            found.extend(
+                f for f in sorted(p.iterdir())
+                if f.is_file() and f.suffix.lower() in exts
+            )
+    return found
 
-    sizes1 = {p: p.stat().st_size for p in candidates}
+
+def filter_stable(videos: list[Path], cfg, logger) -> list[Path]:
+    """복사가 끝난(크기가 더 이상 변하지 않는) 영상만 골라낸다."""
+    if not videos:
+        return []
+    sizes1 = {p: p.stat().st_size for p in videos}
     time.sleep(cfg.get("file_stable_seconds", 10))
     stable = []
-    for p in candidates:
+    for p in videos:
         try:
             if p.stat().st_size == sizes1[p] and sizes1[p] > 0:
                 stable.append(p)
@@ -61,88 +76,134 @@ def find_stable_videos(watch_dir: Path, cfg, logger) -> list[Path]:
     return stable
 
 
-def enabled_platforms(cfg) -> list[str]:
-    return [
-        name for name, pcfg in cfg.get("platforms", {}).items()
-        if pcfg.get("enabled") and name in PLATFORM_MODULES
-    ]
+def resolve_account(video: Path, meta: dict, watch_dir: Path, cfg, logger):
+    """영상을 올릴 계정 그룹 이름을 결정한다. 잘못된 지정이면 None."""
+    accounts = get_accounts(cfg)
+
+    # 1순위: 사이드카 파일에 적힌 계정
+    if meta.get("account"):
+        name = str(meta["account"]).strip()
+        if name in accounts:
+            return name
+        logger.error("'%s': 사이드카에 적힌 계정 '%s'이(가) config.json의 "
+                     "accounts에 없습니다. (등록된 계정: %s)",
+                     video.name, name, ", ".join(accounts) or "없음")
+        return None
+
+    # 2순위: 계정 이름 폴더 안에 있는 경우
+    if video.parent != watch_dir:
+        name = video.parent.name
+        if name in accounts:
+            return name
+        logger.error("'%s': 폴더 이름 '%s'이(가) 등록된 계정이 아닙니다. "
+                     "(등록된 계정: %s)", video.name, name, ", ".join(accounts))
+        return None
+
+    # 3순위: 기본 계정
+    name = cfg.get("default_account")
+    if name in accounts:
+        return name
+    logger.error("'%s': default_account('%s')가 accounts에 등록되어 있지 "
+                 "않습니다. config.json을 확인하세요.", video.name, name)
+    return None
 
 
-def upload_to_platform(name: str, video: Path, meta: dict, cfg, logger) -> bool:
-    pcfg = cfg["platforms"][name]
+def upload_to_platform(account: str, platform: str, video: Path, meta: dict,
+                       cfg, logger) -> bool:
+    pcfg = platform_settings(cfg, platform)
     timeout_s = pcfg.get("upload_timeout_seconds", 600)
     mobile = bool(pcfg.get("mobile_emulation"))
-    logger.info("[%s] '%s' 업로드 시작", name, video.name)
+    logger.info("[%s/%s] '%s' 업로드 시작", account, platform, video.name)
     try:
-        with open_page(name, cfg, mobile=mobile) as page:
+        with open_page(account, platform, cfg, mobile=mobile) as page:
             try:
-                if name == "naver_clip":
-                    PLATFORM_MODULES[name].upload(
+                if platform == "naver_clip":
+                    PLATFORM_MODULES[platform].upload(
                         page, video, meta, logger,
                         timeout_s=timeout_s, platform_cfg=pcfg,
                     )
                 else:
-                    PLATFORM_MODULES[name].upload(
+                    PLATFORM_MODULES[platform].upload(
                         page, video, meta, logger, timeout_s=timeout_s
                     )
                 return True
             except Exception:
-                save_failure_screenshot(page, name, logger)
+                save_failure_screenshot(page, f"{account}_{platform}", logger)
                 raise
     except NotLoggedInError as e:
-        logger.error("[%s] %s", name, e)
+        logger.error("[%s/%s] %s (python setup_login.py %s %s)",
+                     account, platform, e, account, platform)
     except Exception as e:
-        logger.error("[%s] 업로드 실패: %s", name, e)
+        logger.error("[%s/%s] 업로드 실패: %s", account, platform, e)
     return False
 
 
 def process_video(video: Path, cfg, state: dict, logger, dirs: dict) -> None:
-    key = video.name
-    entry = state.setdefault(key, {"platforms": {}, "attempts": 0})
-    targets = [
-        p for p in enabled_platforms(cfg)
-        if entry["platforms"].get(p) != "success"
-    ]
-    if not targets:
-        finish_video(video, cfg, state, logger, dirs, success=True)
+    watch_dir = dirs["watch"]
+    meta = load_metadata(video)
+    account = resolve_account(video, meta, watch_dir, cfg, logger)
+    if account is None:
+        return  # 계정 지정 오류는 파일을 건드리지 않고 사용자가 고칠 때까지 대기
+
+    key = str(video.relative_to(watch_dir))
+    entry = state.setdefault(key, {"account": account, "platforms": {},
+                                   "attempts": 0})
+    platforms = account_platforms(cfg, account)
+    if not platforms:
+        logger.error("'%s': 계정 '%s'에 켜진 플랫폼이 없습니다.", video.name, account)
         return
 
-    meta = load_metadata(video)
-    logger.info("'%s' 처리 시작 (제목: %s / 대상: %s)",
-                video.name, meta["title"], ", ".join(targets))
+    targets = [p for p in platforms
+               if p in PLATFORM_MODULES
+               and entry["platforms"].get(p) != "success"]
+    if not targets:
+        finish_video(video, key, account, state, logger, dirs, success=True)
+        return
+
+    logger.info("'%s' 처리 시작 (계정: %s / 제목: %s / 대상: %s)",
+                video.name, account, meta["title"], ", ".join(targets))
     entry["attempts"] += 1
 
-    for name in targets:
-        ok = upload_to_platform(name, video, meta, cfg, logger)
-        entry["platforms"][name] = "success" if ok else "failed"
+    for platform in targets:
+        ok = upload_to_platform(account, platform, video, meta, cfg, logger)
+        entry["platforms"][platform] = "success" if ok else "failed"
         save_state(state)
 
-    remaining = [p for p in enabled_platforms(cfg)
+    remaining = [p for p in platforms
                  if entry["platforms"].get(p) != "success"]
     if not remaining:
-        finish_video(video, cfg, state, logger, dirs, success=True)
+        finish_video(video, key, account, state, logger, dirs, success=True)
     elif entry["attempts"] >= cfg.get("max_retries", 3):
         logger.error("'%s' 최대 재시도 횟수 초과. 실패 플랫폼: %s",
                      video.name, ", ".join(remaining))
-        finish_video(video, cfg, state, logger, dirs, success=False)
+        finish_video(video, key, account, state, logger, dirs, success=False)
     else:
         logger.warning("'%s' 일부 플랫폼 실패(%s). 다음 주기에 재시도합니다.",
                        video.name, ", ".join(remaining))
 
 
-def finish_video(video: Path, cfg, state, logger, dirs, success: bool) -> None:
-    dest = dirs["done"] if success else dirs["failed"]
+def finish_video(video: Path, key: str, account: str, state, logger, dirs,
+                 success: bool) -> None:
+    dest = (dirs["done"] if success else dirs["failed"]) / account
+    dest.mkdir(parents=True, exist_ok=True)
     for f in [video, *sidecar_files(video)]:
         target = dest / f.name
         if target.exists():
             target = dest / f"{f.stem}_{int(time.time())}{f.suffix}"
         shutil.move(str(f), str(target))
-    state.pop(video.name, None)
+    state.pop(key, None)
     save_state(state)
     if success:
-        logger.info("✅ '%s' 모든 플랫폼 업로드 완료 → %s", video.name, dest)
+        logger.info("✅ '%s' [%s] 모든 플랫폼 업로드 완료 → %s",
+                    video.name, account, dest)
     else:
-        logger.error("❌ '%s' 업로드 실패 → %s", video.name, dest)
+        logger.error("❌ '%s' [%s] 업로드 실패 → %s", video.name, account, dest)
+
+
+def ensure_account_folders(watch_dir: Path, cfg) -> None:
+    """등록된 계정 이름으로 inbox 하위 폴더를 만들어 두어 넣기 쉽게 한다."""
+    for name in get_accounts(cfg):
+        (watch_dir / name).mkdir(parents=True, exist_ok=True)
 
 
 def run_once(cfg, logger) -> None:
@@ -151,8 +212,9 @@ def run_once(cfg, logger) -> None:
         "done": resolve_dir(cfg["done_folder"]),
         "failed": resolve_dir(cfg["failed_folder"]),
     }
+    ensure_account_folders(dirs["watch"], cfg)
     state = load_state()
-    videos = find_stable_videos(dirs["watch"], cfg, logger)
+    videos = filter_stable(collect_videos(dirs["watch"], cfg), cfg, logger)
     if not videos:
         logger.info("새 영상 없음 (%s)", dirs["watch"])
         return
@@ -161,7 +223,7 @@ def run_once(cfg, logger) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="영상 멀티플랫폼 자동 업로더")
+    parser = argparse.ArgumentParser(description="영상 멀티플랫폼·멀티계정 자동 업로더")
     parser.add_argument("--once", action="store_true",
                         help="한 번만 검사하고 종료 (작업 스케줄러용)")
     parser.add_argument("--config", default=None, help="config.json 경로")
@@ -169,12 +231,17 @@ def main():
 
     cfg = load_config(Path(args.config) if args.config else None)
     logger = setup_logger()
-    platforms = enabled_platforms(cfg)
-    logger.info("=== 자동 업로더 시작 (활성 플랫폼: %s) ===",
-                ", ".join(platforms) or "없음")
-    if not platforms:
-        logger.error("config.json에서 활성화된 플랫폼이 없습니다.")
+
+    accounts = get_accounts(cfg)
+    if not accounts:
+        logger.error("config.json에 등록된 계정(accounts)이 없습니다.")
         return
+    summary = ", ".join(
+        f"{name}({'/'.join(account_platforms(cfg, name)) or '플랫폼 없음'})"
+        for name in accounts
+    )
+    logger.info("=== 자동 업로더 시작 — 등록된 계정: %s / 기본 계정: %s ===",
+                summary, cfg.get("default_account"))
 
     if args.once:
         run_once(cfg, logger)

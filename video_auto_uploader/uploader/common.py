@@ -3,6 +3,7 @@
 
 import json
 import logging
+import re
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -48,14 +49,21 @@ def setup_logger() -> logging.Logger:
 
 # ---------------------------------------------------------------- 메타데이터
 
-def load_metadata(video_path: Path) -> dict:
-    """영상 옆의 같은 이름 .json 또는 .txt에서 제목/설명/해시태그를 읽는다.
+_ACCOUNT_LINE = re.compile(r"^\s*(계정|account)\s*[:=]\s*(.+?)\s*$", re.IGNORECASE)
 
-    .json 형식: {"title": "...", "description": "...", "hashtags": ["태그1", ...]}
-    .txt 형식: 첫 줄 = 제목, 둘째 줄부터 = 설명(해시태그 포함 가능)
+
+def load_metadata(video_path: Path) -> dict:
+    """영상 옆의 같은 이름 .json 또는 .txt에서 제목/설명/해시태그/계정을 읽는다.
+
+    .json 형식: {"account": "심리2", "title": "...", "description": "...",
+                 "hashtags": ["태그1", ...]}  (account 대신 "계정"도 가능)
+    .txt 형식: `계정: 심리2` 줄(위치 무관, 선택)을 빼고 나면
+               첫 줄 = 제목, 둘째 줄부터 = 설명(해시태그 포함 가능)
     사이드카 파일이 없으면 파일명(확장자 제외)을 제목으로 사용한다.
+    account가 비어 있으면 폴더 위치/기본 계정으로 결정된다(main.py 참고).
     """
-    meta = {"title": video_path.stem, "description": "", "hashtags": []}
+    meta = {"title": video_path.stem, "description": "", "hashtags": [],
+            "account": None}
 
     json_path = video_path.with_suffix(".json")
     txt_path = video_path.with_suffix(".txt")
@@ -66,8 +74,15 @@ def load_metadata(video_path: Path) -> dict:
         meta["title"] = data.get("title") or meta["title"]
         meta["description"] = data.get("description", "")
         meta["hashtags"] = data.get("hashtags", [])
+        meta["account"] = data.get("account") or data.get("계정")
     elif txt_path.exists():
-        lines = txt_path.read_text(encoding="utf-8").splitlines()
+        lines = []
+        for line in txt_path.read_text(encoding="utf-8").splitlines():
+            m = _ACCOUNT_LINE.match(line)
+            if m and meta["account"] is None:
+                meta["account"] = m.group(2)
+            else:
+                lines.append(line)
         if lines:
             meta["title"] = lines[0].strip() or meta["title"]
             meta["description"] = "\n".join(lines[1:]).strip()
@@ -115,15 +130,32 @@ def save_state(state: dict) -> None:
 
 # ---------------------------------------------------------------- 브라우저
 
-@contextmanager
-def open_page(platform: str, cfg: dict, mobile: bool = False):
-    """플랫폼별 영구 프로필로 브라우저를 열어 page를 돌려준다.
+def get_accounts(cfg: dict) -> dict:
+    """등록된 계정 그룹 목록을 돌려준다. {이름: {description, platforms}}"""
+    return cfg.get("accounts", {})
 
-    프로필을 플랫폼마다 분리해 두면 로그인 세션이 서로 영향을 주지 않고,
+
+def account_platforms(cfg: dict, account: str) -> list[str]:
+    """해당 계정 그룹에서 켜져 있는 플랫폼 이름 목록."""
+    acc = get_accounts(cfg).get(account, {})
+    return [name for name, on in acc.get("platforms", {}).items() if on]
+
+
+def platform_settings(cfg: dict, platform: str) -> dict:
+    return cfg.get("platform_settings", {}).get(platform, {})
+
+
+@contextmanager
+def open_page(account: str, platform: str, cfg: dict, mobile: bool = False):
+    """계정×플랫폼별 영구 프로필로 브라우저를 열어 page를 돌려준다.
+
+    프로필을 계정 그룹 × 플랫폼 단위로 분리해 두면(예: 심리2/tiktok)
+    같은 플랫폼의 여러 계정 로그인이 서로 섞이지 않고,
     한 번 로그인하면 이후 실행에서 세션이 유지된다.
     """
     bcfg = cfg.get("browser", {})
-    profile_dir = BASE_DIR / bcfg.get("profiles_dir", "browser_profiles") / platform
+    profile_dir = (BASE_DIR / bcfg.get("profiles_dir", "browser_profiles")
+                   / account / platform)
     profile_dir.mkdir(parents=True, exist_ok=True)
 
     launch_kwargs = {
