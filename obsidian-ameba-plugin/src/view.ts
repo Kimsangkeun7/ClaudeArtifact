@@ -6,14 +6,20 @@
  * and FUSE; nodes whose internal tension has crept up spontaneously SPLIT and
  * drift apart. It just runs, like a culture in a dish.
  */
-import { ItemView, WorkspaceLeaf, setIcon, TFile } from "obsidian";
+import { ItemView, WorkspaceLeaf, setIcon, TFile, Notice } from "obsidian";
 import {
   Cell, SourceNote, cellsFromNotes, similarity, shouldMerge, merge,
   shouldSplit, split, decay, isDead, score, recommendations, topKeywords,
-  catColor, countLeaves, Reco,
+  catColor, traitBrief, TraitBrief, Reco,
 } from "./engine";
 
 export const VIEW_TYPE = "amoeba-system-view";
+
+export interface ViewData {
+  students: Record<string, SourceNote[]>;
+  embeddings: Record<string, number[]>;
+  aiRecommend: ((student: string, traits: TraitBrief[]) => Promise<Reco[] | null>) | null;
+}
 
 interface PNode {
   cell: Cell;
@@ -26,11 +32,16 @@ interface PLink { a: PNode; b: PNode; sim: number; }
 
 interface Event { kind: "converge" | "diverge" | "ingest" | "decay"; text: string; t: number; }
 
-export type DataProvider = () => Record<string, SourceNote[]>;
+export type DataProvider = () => ViewData;
 
 export class AmoebaView extends ItemView {
   private provider: DataProvider;
   private data: Record<string, SourceNote[]> = {};
+  private embeddings: Record<string, number[]> = {};
+  private aiRecommend: ViewData["aiRecommend"] = null;
+  private aiRecos: Reco[] | null = null;
+  private aiLoading = false;
+  private aiBtn: HTMLElement | null = null;
   private current = "";
 
   private nodes: PNode[] = [];
@@ -95,6 +106,11 @@ export class AmoebaView extends ItemView {
     rescan.createSpan({ text: " 노트 다시읽기" });
     rescan.onclick = () => this.reload();
 
+    this.aiBtn = bar.createEl("button", { cls: "amoeba-btn amoeba-ai-btn" });
+    setIcon(this.aiBtn.createSpan(), "brain-circuit");
+    this.aiBtn.createSpan({ text: " AI 추천" });
+    this.aiBtn.onclick = () => this.runAIRecommend();
+
     // --- body: canvas + side panel ---
     const body = root.createDiv({ cls: "amoeba-body" });
     const stage = body.createDiv({ cls: "amoeba-stage" });
@@ -125,7 +141,11 @@ export class AmoebaView extends ItemView {
 
   // --- data --------------------------------------------------------------
   reload(): void {
-    this.data = this.provider() || {};
+    const d = this.provider();
+    this.data = d?.students || {};
+    this.embeddings = d?.embeddings || {};
+    this.aiRecommend = d?.aiRecommend || null;
+    if (this.aiBtn) this.aiBtn.toggleClass("amoeba-hidden", !this.aiRecommend);
     const names = Object.keys(this.data).sort();
     this.studentSel.empty();
     if (!names.length) {
@@ -145,8 +165,9 @@ export class AmoebaView extends ItemView {
 
   private selectStudent(name: string, reseed = false): void {
     this.current = name;
+    this.aiRecos = null;
     const notes = this.data[name] || [];
-    const cells = cellsFromNotes(notes);
+    const cells = cellsFromNotes(notes, this.embeddings);
     this.totalLeaves = cells.length;
     this.epoch = 0;
     this.events = [{ kind: "ingest", text: `${cells.length}개 관찰 유입`, t: Date.now() }];
@@ -389,12 +410,29 @@ export class AmoebaView extends ItemView {
 
   private cells(): Cell[] { return this.nodes.map((n) => n.cell); }
 
+  private async runAIRecommend(): Promise<void> {
+    if (!this.aiRecommend) { new Notice("AI가 꺼져 있습니다. 설정에서 로컬 LLM(Ollama)을 켜세요."); return; }
+    if (this.aiLoading || !this.current) return;
+    this.aiLoading = true; this.renderSide();
+    try {
+      const briefs = this.cells().slice().sort((a, b) => b.strength - a.strength).map(traitBrief);
+      const recos = await this.aiRecommend(this.current, briefs);
+      if (recos && recos.length) { this.aiRecos = recos; new Notice("AI 추천을 생성했습니다."); }
+      else new Notice("AI 응답을 받지 못했습니다. Ollama 실행/모델을 확인하세요.");
+    } catch (e) {
+      new Notice("AI 추천 실패: " + (e as Error).message);
+    } finally {
+      this.aiLoading = false; this.renderSide();
+    }
+  }
+
   // --- side panel --------------------------------------------------------
   private renderSide(): void {
     const cells = this.cells().slice().sort((a, b) => b.strength - a.strength);
     const sc = score(cells, this.totalLeaves);
     const compression = this.totalLeaves ? Math.round((1 - cells.length / this.totalLeaves) * 100) : 0;
-    const recos = recommendations(cells);
+    const recos = this.aiRecos || recommendations(cells);
+    const aiOn = !!this.aiRecos;
     this.side.empty();
 
     const h = this.side.createDiv({ cls: "amoeba-panel" });
@@ -404,7 +442,7 @@ export class AmoebaView extends ItemView {
     h.createDiv({ cls: "amoeba-sub", text: `${this.current || "—"} · 특질 ${cells.length}개 · 원본 관찰 ${this.totalLeaves}개 → 수렴률 ${compression}%` });
 
     const reco = this.side.createDiv({ cls: "amoeba-reco" });
-    reco.createEl("h4", { text: "📌 다음 수업 추천" });
+    reco.createEl("h4", { text: this.aiLoading ? "🧠 AI 추천 생성 중…" : (aiOn ? "🧠 AI 수업 추천 (로컬 LLM)" : "📌 다음 수업 추천") });
     recos.forEach((r: Reco) => {
       const li = reco.createDiv({ cls: "amoeba-reco-item" });
       li.createEl("b", { text: r.focus });

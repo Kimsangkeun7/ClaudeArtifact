@@ -37,6 +37,7 @@ export interface Cell {
   members: string[];   // source note paths contributing to this cell
   subCells: Cell[];    // leaf observations, used for divergence analysis
   vec: Vec;
+  emb?: number[];      // semantic embedding (unit-normalized) when AI is on
   strength: number;    // 0..1
   category: string;
   session: number;
@@ -50,6 +51,22 @@ export interface Reco {
   category: string;
   action: string;
   confidence: number;
+}
+
+// Brief used to ask a local LLM for semantic labels / recommendations.
+export interface TraitBrief {
+  label: string;
+  category: string;
+  keywords: string[];
+  members: number;
+  samples: string[];
+}
+
+// When AI is on, semantic embedding cosine blends into similarity, so
+// convergence/divergence follow MEANING, not just shared tags.
+export const aiState = { enabled: false, semWeight: 0.6 };
+export function setAI(enabled: boolean, semWeight = 0.6): void {
+  aiState.enabled = enabled; aiState.semWeight = semWeight;
 }
 
 export const CFG = {
@@ -89,13 +106,15 @@ function keywordsOf(note: SourceNote): Vec {
   return kw;
 }
 
-export function cellsFromNotes(notes: SourceNote[]): Cell[] {
+export function cellsFromNotes(notes: SourceNote[], embByPath?: Record<string, number[]>): Cell[] {
   return notes.map((n) => {
+    const emb = embByPath && embByPath[n.path] ? normalize(embByPath[n.path]) : undefined;
     const cell: Cell = {
       id: nid(),
       members: [n.path],
       subCells: [],
       vec: keywordsOf(n),
+      emb,
       strength: typeof n.strength === "number" ? n.strength : 0.55,
       category: n.category || "general",
       session: n.session || 0,
@@ -106,6 +125,28 @@ export function cellsFromNotes(notes: SourceNote[]): Cell[] {
     cell.subCells = [leaf(cell)];
     return cell;
   });
+}
+
+function normalize(v: number[]): number[] {
+  let s = 0; for (const x of v) s += x * x;
+  s = Math.sqrt(s) || 1;
+  return v.map((x) => x / s);
+}
+function dot(a: number[], b: number[]): number {
+  const n = Math.min(a.length, b.length); let s = 0;
+  for (let i = 0; i < n; i++) s += a[i] * b[i];
+  return s;
+}
+function mixEmb(a: number[] | undefined, b: number[] | undefined, wa: number, wb: number): number[] | undefined {
+  if (a && b) { const out = a.map((x, i) => x * wa + (b[i] || 0) * wb); return normalize(out); }
+  return a || b;
+}
+function avgEmb(cells: Cell[]): number[] | undefined {
+  const withEmb = cells.filter((c) => c.emb);
+  if (!withEmb.length) return undefined;
+  const len = withEmb[0].emb!.length; const out = new Array(len).fill(0);
+  withEmb.forEach((c) => { for (let i = 0; i < len; i++) out[i] += c.emb![i]; });
+  return normalize(out);
 }
 function leaf(c: Cell): Cell { return { ...c, subCells: [] }; }
 
@@ -124,8 +165,15 @@ export function cosine(a: Vec, b: Vec): number {
 }
 
 export function similarity(a: Cell, b: Cell): number {
-  let s = cosine(a.vec, b.vec);
-  if (a.category === b.category) s += CFG.categoryBonus;
+  const tagCos = cosine(a.vec, b.vec);
+  let s: number;
+  if (aiState.enabled && a.emb && b.emb) {
+    const sem = Math.max(0, dot(a.emb, b.emb));          // semantic meaning
+    const w = aiState.semWeight;
+    s = w * sem + (1 - w) * tagCos + (a.category === b.category ? CFG.categoryBonus * 0.5 : 0);
+  } else {
+    s = tagCos + (a.category === b.category ? CFG.categoryBonus : 0);
+  }
   return Math.min(1, s);
 }
 
@@ -158,6 +206,7 @@ export function merge(a: Cell, b: Cell): Cell {
     members: a.members.concat(b.members),
     subCells,
     vec,
+    emb: mixEmb(a.emb, b.emb, a.strength, b.strength),
     strength: Math.min(1, (a.strength + b.strength) * 0.62 + 0.1), // synergy bump
     category: dominantCategory(subCells),
     session: Math.max(a.session, b.session),
@@ -224,6 +273,7 @@ function condense(cells: Cell[], stripCommon: Set<string>): Cell | null {
     members: ([] as string[]).concat(...cells.map((c) => c.members)),
     subCells: cells.map(leaf),
     vec,
+    emb: avgEmb(cells),
     strength: Math.min(1, str / cells.length + 0.05),
     category: dominantCategory(cells),
     session: Math.max(...cells.map((c) => c.session)),
@@ -312,6 +362,18 @@ export const CAT_COLOR: Record<string, string> = {
   interests: "#f6c177", general: "#9aa0aa",
 };
 export function catColor(c: string): string { return CAT_COLOR[c] || "#9aa0aa"; }
+
+export function traitBrief(c: Cell): TraitBrief {
+  const samples: string[] = [];
+  (c.subCells.length ? c.subCells : [c]).forEach((s) => { if (s.text) samples.push(s.text); });
+  return {
+    label: c.label || c.category,
+    category: c.category,
+    keywords: topKeys(c.vec, 5),
+    members: c.members.length,
+    samples: samples.slice(0, 4),
+  };
+}
 
 export function countLeaves(cells: Cell[]): number {
   return cells.reduce((s, c) => s + (c.subCells.length || 1), 0);
