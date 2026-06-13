@@ -189,12 +189,13 @@ export class AmoebaView extends ItemView {
     if (this.playing) {
       const steps = this.speed < 1 ? (this.frame % 2 ? 1 : 0) : Math.round(this.speed);
       for (let s = 0; s < steps; s++) this.physics();
+      this.perFrame();                                 // decay/radius once per frame (speed-independent)
       // structural events run at a calmer cadence so they're watchable
-      if (this.frame % Math.max(6, Math.round(10 / this.speed)) === 0) {
+      if (this.frame % Math.max(5, Math.round(9 / this.speed)) === 0) {
         const changed = this.tryConverge() || this.tryDiverge();
         if (changed) { this.rebuildLinks(); this.renderSide(); }
       }
-      if (this.frame % 90 === 0) this.cull();
+      if (this.frame % 120 === 0) this.cull();
     }
     this.draw();
   }
@@ -207,37 +208,41 @@ export class AmoebaView extends ItemView {
       const A = n[i];
       for (let j = i + 1; j < n.length; j++) {
         const B = n[j];
-        let dx = A.x - B.x, dy = A.y - B.y;
-        let d2 = dx * dx + dy * dy + 0.01;
-        const minD = A.r + B.r + 8;
-        const f = (3200 + minD * minD) / d2;          // repulsion (more if big)
+        const dx = A.x - B.x, dy = A.y - B.y;
+        const d2 = dx * dx + dy * dy + 0.01;
         const d = Math.sqrt(d2);
+        const f = (2600 + (A.r + B.r) * 26) / d2;      // repulsion (bigger nodes push more)
         const fx = (dx / d) * f, fy = (dy / d) * f;
-        A.vx += fx * 0.0009; A.vy += fy * 0.0009;
-        B.vx -= fx * 0.0009; B.vy -= fy * 0.0009;
+        A.vx += fx; A.vy += fy; B.vx -= fx; B.vy -= fy;
       }
-      A.vx += (cx - A.x) * 0.0009;                     // gravity to center
-      A.vy += (cy - A.y) * 0.0009;
+      A.vx += (cx - A.x) * 0.0022;                     // gentle gravity to center
+      A.vy += (cy - A.y) * 0.0022;
     }
     // similarity springs: the more similar, the shorter the rest length →
     // similar cells are dragged into collision (and then fuse).
     this.links.forEach((l) => {
       const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
       const d = Math.sqrt(dx * dx + dy * dy) + 0.01;
-      const rest = 140 - l.sim * 110;                  // sim 0.3→107, sim 1→30
-      const k = 0.0016 + l.sim * 0.004;
+      const rest = (l.a.r + l.b.r) + 70 - l.sim * 90;  // similar → shorter than radii sum → collide
+      const k = 0.012 + l.sim * 0.03;
       const f = (d - rest) * k;
       const fx = (dx / d) * f, fy = (dy / d) * f;
       l.a.vx += fx; l.a.vy += fy; l.b.vx -= fx; l.b.vy -= fy;
     });
     n.forEach((A) => {
+      if (A === this.drag) { A.vx = 0; A.vy = 0; return; }
+      A.x += A.vx * 0.5; A.y += A.vy * 0.5;
+      A.vx *= 0.85; A.vy *= 0.85;
+    });
+  }
+
+  // speed-independent per-frame updates: decay (도태), radius easing, flash fade
+  private perFrame(): void {
+    this.nodes.forEach((A) => {
       decay(A.cell);
       A.tr = radiusFor(A.cell);
       A.r += (A.tr - A.r) * 0.08;
       if (A.flash > 0) A.flash -= 0.02;
-      if (A === this.drag) { A.vx = 0; A.vy = 0; return; }
-      A.x += A.vx; A.y += A.vy;
-      A.vx *= 0.86; A.vy *= 0.86;
     });
   }
 

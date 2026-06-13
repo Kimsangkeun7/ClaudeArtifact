@@ -57,9 +57,9 @@ export const CFG = {
   mergeThreshold: 0.46,   // min similarity for two collided cells to fuse
   tensionThreshold: 0.52, // internal heterogeneity above which a cell splits
   divergeFloor: 3,        // a cell needs >= this many sub-observations to split
-  decayPerTick: 0.0009,   // strength bleed per simulation tick
+  decayPerTick: 0.0006,   // strength bleed per frame (gentle 도태)
   reinforcePerMember: 0.0004,
-  cullFloor: 0.10,
+  cullFloor: 0.08,
 };
 
 const STOP = new Set(("the a an and or but of to in on for with at by is are was were be been " +
@@ -261,7 +261,7 @@ export function decay(c: Cell): void {
   c.age++;
 }
 export function isDead(c: Cell): boolean {
-  return c.strength < CFG.cullFloor && c.members.length <= 1 && c.age > 600;
+  return c.strength < CFG.cullFloor && c.members.length <= 1 && c.age > 1500;
 }
 
 // --- maturity score & recommendations ----------------------------------
