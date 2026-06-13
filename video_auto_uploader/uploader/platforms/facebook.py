@@ -18,6 +18,32 @@ def check_login(page) -> bool:
     return LOGIN_URL_HINT not in page.url and page.locator("#email").count() == 0
 
 
+def login(page, username: str, password: str, logger) -> None:
+    """저장된 아이디/비밀번호로 자동 로그인 시도(2단계 인증/캡차는 직접 처리 필요)."""
+    page.goto("https://www.facebook.com/login", wait_until="domcontentloaded")
+    page.wait_for_timeout(2000)
+    try_click(page, ['button:has-text("모든 쿠키 허용")',
+                     'button[data-cookiebanner="accept_button"]'], 3000)
+    page.fill("#email", username)
+    page.fill("#pass", password)
+    click_any(page, ['button[name="login"]', 'button[type="submit"]'], 15000)
+    page.wait_for_timeout(6000)
+
+
+def ensure_logged_in(page, creds, logger) -> None:
+    if check_login(page):
+        return
+    if creds and creds.get("username") and creds.get("password"):
+        logger.info("[facebook] 세션 없음 → 저장된 계정으로 자동 로그인 시도")
+        login(page, creds["username"], creds["password"], logger)
+        if check_login(page):
+            logger.info("[facebook] 자동 로그인 성공")
+            return
+    raise NotLoggedInError(
+        "페이스북 로그인이 필요합니다. 설정 화면에서 '직접 로그인'을 하거나 "
+        "2단계 인증을 완료하세요.")
+
+
 def upload(page, video_path: Path, meta: dict, logger, timeout_s: int = 600):
     caption = build_caption(meta)
     page.goto(CREATE_URL, wait_until="domcontentloaded")

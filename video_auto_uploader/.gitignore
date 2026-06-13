@@ -1,5 +1,7 @@
-# 로그인 세션(절대 커밋 금지)
+# 로그인 세션·자격증명(절대 커밋 금지)
 browser_profiles/
+secret.key
+credentials.enc
 
 # 실행 산출물
 logs/

@@ -20,6 +20,39 @@ def check_login(page) -> bool:
     return LOGIN_HINT not in page.url
 
 
+def login(page, username: str, password: str, logger) -> None:
+    """저장된 아이디/비밀번호로 자동 로그인 시도.
+
+    ⚠ 네이버는 자동 입력을 강하게 차단(기기 등록/캡차)합니다. 자동 로그인이
+    막히면 설정 화면의 '직접 로그인'을 이용하세요.
+    """
+    page.goto("https://nid.naver.com/nidlogin.login",
+              wait_until="domcontentloaded")
+    page.wait_for_timeout(2000)
+    try:
+        page.fill("#id", username)
+        page.fill("#pw", password)
+        click_any(page, ['button[type="submit"]', '.btn_login', "#log\\.login"],
+                  15000)
+    except Exception as e:
+        logger.warning("[naver_clip] 로그인 폼 입력 실패(차단/화면 변경 가능): %s", e)
+    page.wait_for_timeout(6000)
+
+
+def ensure_logged_in(page, creds, logger) -> None:
+    if check_login(page):
+        return
+    if creds and creds.get("username") and creds.get("password"):
+        logger.info("[naver_clip] 세션 없음 → 저장된 계정으로 자동 로그인 시도")
+        login(page, creds["username"], creds["password"], logger)
+        if check_login(page):
+            logger.info("[naver_clip] 자동 로그인 성공")
+            return
+    raise NotLoggedInError(
+        "네이버 로그인이 필요합니다. 자동 로그인이 자주 차단되니 설정 화면에서 "
+        "'직접 로그인'을 권장합니다.")
+
+
 def upload(page, video_path: Path, meta: dict, logger, timeout_s: int = 600,
            platform_cfg: dict | None = None):
     if not platform_cfg:

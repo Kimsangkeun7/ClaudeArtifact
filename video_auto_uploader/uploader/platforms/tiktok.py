@@ -17,6 +17,41 @@ def check_login(page) -> bool:
     return "/login" not in page.url
 
 
+def login(page, username: str, password: str, logger) -> None:
+    """저장된 아이디/비밀번호로 자동 로그인 시도.
+
+    ⚠ 틱톡은 로그인 시 캡차(슬라이드 퍼즐)를 자주 띄웁니다. 캡차가 뜨면
+    자동 로그인이 멈추므로, 창에서 직접 캡차를 풀거나 설정 화면의
+    '직접 로그인'을 이용하세요.
+    """
+    page.goto("https://www.tiktok.com/login/phone-or-email/email",
+              wait_until="domcontentloaded")
+    page.wait_for_timeout(3000)
+    try:
+        page.fill('input[name="username"]', username)
+        pw = page.locator('input[type="password"]').first
+        pw.fill(password)
+        click_any(page, ['button[type="submit"]', 'button[data-e2e="login-button"]'],
+                  15000)
+    except Exception as e:
+        logger.warning("[tiktok] 로그인 폼 입력 실패(캡차/화면 변경 가능): %s", e)
+    page.wait_for_timeout(8000)
+
+
+def ensure_logged_in(page, creds, logger) -> None:
+    if check_login(page):
+        return
+    if creds and creds.get("username") and creds.get("password"):
+        logger.info("[tiktok] 세션 없음 → 저장된 계정으로 자동 로그인 시도")
+        login(page, creds["username"], creds["password"], logger)
+        if check_login(page):
+            logger.info("[tiktok] 자동 로그인 성공")
+            return
+    raise NotLoggedInError(
+        "틱톡 로그인이 필요합니다. 캡차가 있을 수 있으니 설정 화면에서 "
+        "'직접 로그인'을 권장합니다.")
+
+
 def upload(page, video_path: Path, meta: dict, logger, timeout_s: int = 600):
     caption = build_caption(meta, max_len=MAX_CAPTION)
     page.goto(UPLOAD_URL, wait_until="domcontentloaded")

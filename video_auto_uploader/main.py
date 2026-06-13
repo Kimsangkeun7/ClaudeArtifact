@@ -25,6 +25,7 @@ from uploader.common import (BASE_DIR, NotLoggedInError, account_platforms,
                              load_state, open_page, platform_settings,
                              save_failure_screenshot, save_state, setup_logger,
                              sidecar_files)
+from uploader.credentials import get_credentials
 from uploader.platforms import facebook, instagram, naver_clip, tiktok
 
 PLATFORM_MODULES = {
@@ -113,10 +114,13 @@ def upload_to_platform(account: str, platform: str, video: Path, meta: dict,
     pcfg = platform_settings(cfg, platform)
     timeout_s = pcfg.get("upload_timeout_seconds", 600)
     mobile = bool(pcfg.get("mobile_emulation"))
+    creds = get_credentials(account, platform)
     logger.info("[%s/%s] '%s' 업로드 시작", account, platform, video.name)
     try:
         with open_page(account, platform, cfg, mobile=mobile) as page:
             try:
+                # 저장된 세션이 없으면 입력해 둔 아이디/비밀번호로 자동 로그인 시도
+                PLATFORM_MODULES[platform].ensure_logged_in(page, creds, logger)
                 if platform == "naver_clip":
                     PLATFORM_MODULES[platform].upload(
                         page, video, meta, logger,

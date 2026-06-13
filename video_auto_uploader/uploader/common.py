@@ -31,6 +31,21 @@ def load_config(path: Path | None = None) -> dict:
         return json.load(f)
 
 
+def save_config(cfg: dict, path: Path | None = None) -> None:
+    cfg_path = path or (BASE_DIR / "config.json")
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+
+def has_browser_session(account: str, platform: str, cfg: dict) -> bool:
+    """저장된 로그인 세션(영구 프로필)이 있는지 대략적으로 판단한다."""
+    bcfg = cfg.get("browser", {})
+    profile_dir = (BASE_DIR / bcfg.get("profiles_dir", "browser_profiles")
+                   / account / platform)
+    # 로그인하면 Default/Cookies 등 파일이 생긴다. 폴더에 내용이 있으면 세션 있다고 본다.
+    return profile_dir.exists() and any(profile_dir.iterdir())
+
+
 def setup_logger() -> logging.Logger:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("uploader")
