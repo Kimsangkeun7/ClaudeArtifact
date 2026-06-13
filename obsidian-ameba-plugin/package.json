@@ -1,0 +1,19 @@
+{
+  "name": "obsidian-amoeba-system",
+  "version": "1.0.0",
+  "description": "Amoeba System — an Obsidian plugin where student notes spontaneously converge and diverge in a living, graph-style simulation.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": ["obsidian", "plugin", "amoeba", "graph", "english-tutoring"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.0",
+    "obsidian": "latest",
+    "typescript": "^5.4.0"
+  }
+}

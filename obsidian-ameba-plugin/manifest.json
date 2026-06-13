@@ -1,0 +1,10 @@
+{
+  "id": "amoeba-system",
+  "name": "Amoeba System",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "학생 노트가 세대를 거쳐 수렴(융합)·발산(분기)하며 진화하는 아메바 시스템 — 영어 1:1 강사용. Notes converge into traits and diverge into specialized sub-traits over generations.",
+  "author": "Obsidian-Amoeba",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
