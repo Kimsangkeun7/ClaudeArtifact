@@ -1,0 +1,48 @@
+name: Deploy web app to GitHub Pages
+
+# Publishes the standalone web app in /obsidian-ameba to GitHub Pages.
+# One-time setup by the repo owner:
+#   Settings → Pages → Build and deployment → Source: "GitHub Actions"
+# Then either merge this branch to the default branch, or run this workflow
+# manually from the Actions tab (Run workflow). Public repo required for free Pages.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/obsidian-ameba-system-6b4yjs
+    paths:
+      - "obsidian-ameba/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload web app artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: obsidian-ameba
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
