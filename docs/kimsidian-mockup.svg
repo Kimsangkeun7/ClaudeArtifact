@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" font-family="'Segoe UI','Apple SD Gothic Neo',sans-serif">
+  <defs>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="gPur" cx="40%" cy="35%"><stop offset="0%" stop-color="#b3a8ff"/><stop offset="100%" stop-color="#7c6cff"/></radialGradient>
+    <radialGradient id="gOra" cx="40%" cy="35%"><stop offset="0%" stop-color="#f2c98a"/><stop offset="100%" stop-color="#e2a04a"/></radialGradient>
+    <radialGradient id="gGrn" cx="40%" cy="35%"><stop offset="0%" stop-color="#94e6c8"/><stop offset="100%" stop-color="#4ec9a0"/></radialGradient>
+    <radialGradient id="gBlu" cx="40%" cy="35%"><stop offset="0%" stop-color="#a7d0f2"/><stop offset="100%" stop-color="#5aa9e6"/></radialGradient>
+    <radialGradient id="gRed" cx="40%" cy="35%"><stop offset="0%" stop-color="#f0969f"/><stop offset="100%" stop-color="#e35d6a"/></radialGradient>
+    <radialGradient id="stage" cx="50%" cy="42%" r="75%"><stop offset="0%" stop-color="#26243a"/><stop offset="100%" stop-color="#1e1e1e"/></radialGradient>
+    <radialGradient id="membrane" cx="50%" cy="48%" r="60%"><stop offset="0%" stop-color="#7c6cff" stop-opacity="0.10"/><stop offset="100%" stop-color="#7c6cff" stop-opacity="0"/></radialGradient>
+  </defs>
+
+  <!-- window bg -->
+  <rect width="1280" height="800" fill="#1e1e1e"/>
+
+  <!-- ===== Obsidian left ribbon ===== -->
+  <rect x="0" y="0" width="48" height="800" fill="#181818"/>
+  <g fill="#9a9a9a" font-size="18" text-anchor="middle">
+    <rect x="9" y="14" width="30" height="30" rx="7" fill="#2a2a2a"/><text x="24" y="34">📄</text>
+    <text x="24" y="78">🔍</text><text x="24" y="116">📊</text>
+    <rect x="9" y="130" width="30" height="30" rx="7" fill="#2a2a2a"/><text x="24" y="150" fill="#a78bfa">🧬</text>
+    <text x="24" y="744">⚙️</text>
+  </g>
+
+  <!-- ===== file explorer ===== -->
+  <rect x="48" y="0" width="260" height="800" fill="#202020"/>
+  <rect x="48" y="0" width="260" height="40" fill="#1a1a1a"/>
+  <text x="64" y="25" fill="#dcddde" font-size="13" font-weight="700">킴시디언 볼트</text>
+  <g font-size="13" fill="#9a9a9a">
+    <text x="64" y="64" fill="#6a6a6a" font-size="11" font-weight="700">STUDENTS / DANIEL CHO</text>
+    <circle cx="70" cy="84" r="3.5" fill="#e2a04a"/><text x="82" y="88">session-01 · goals</text>
+    <circle cx="70" cy="108" r="3.5" fill="#e2a04a"/><text x="82" y="112">session-02 · pronunciation</text>
+    <rect x="60" y="120" width="240" height="22" rx="5" fill="#7c6cff"/>
+    <circle cx="70" cy="131" r="3.5" fill="#fff"/><text x="82" y="135" fill="#fff">session-03 · th-sound</text>
+    <circle cx="70" cy="156" r="3.5" fill="#e2a04a"/><text x="82" y="160">session-04 · r-l</text>
+    <text x="64" y="192" fill="#6a6a6a" font-size="11" font-weight="700">STUDENTS / JIWON PARK</text>
+    <circle cx="70" cy="212" r="3.5" fill="#7c6cff"/><text x="82" y="216">session-01 · grammar</text>
+    <circle cx="70" cy="236" r="3.5" fill="#7c6cff"/><text x="82" y="240">session-02 · articles</text>
+    <text x="64" y="272" fill="#6a6a6a" font-size="11" font-weight="700">CONCEPTS</text>
+    <circle cx="70" cy="292" r="3.5" fill="#5aa9e6"/><text x="82" y="296">th-sound</text>
+    <circle cx="70" cy="316" r="3.5" fill="#5aa9e6"/><text x="82" y="320">r-l-distinction</text>
+    <circle cx="70" cy="340" r="3.5" fill="#5aa9e6"/><text x="82" y="344">present-perfect</text>
+  </g>
+
+  <!-- ===== main: tab bar ===== -->
+  <rect x="308" y="0" width="652" height="40" fill="#1a1a1a"/>
+  <rect x="308" y="0" width="220" height="40" fill="#1e1e1e"/>
+  <text x="328" y="25" fill="#dcddde" font-size="13">🧬 Amoeba System</text>
+  <text x="512" y="25" fill="#6a6a6a" font-size="13">✕</text>
+
+  <!-- toolbar -->
+  <rect x="308" y="40" width="652" height="46" fill="#252525"/>
+  <text x="328" y="69" fill="#dcddde" font-size="13" font-weight="700">🧬 Amoeba</text>
+  <rect x="404" y="52" width="150" height="24" rx="5" fill="#2a2a2a" stroke="#383838"/>
+  <text x="414" y="69" fill="#dcddde" font-size="12">Daniel Cho (6) ▾</text>
+  <rect x="566" y="52" width="74" height="24" rx="5" fill="#2a2a2a" stroke="#383838"/><text x="576" y="69" fill="#dcddde" font-size="12">⏸ 정지</text>
+  <rect x="648" y="52" width="40" height="24" rx="5" fill="#2a2a2a" stroke="#383838"/><text x="658" y="69" fill="#dcddde" font-size="12">2×</text>
+  <rect x="696" y="52" width="86" height="24" rx="5" fill="#2a2a2a" stroke="#383838"/><text x="706" y="69" fill="#dcddde" font-size="12">⟲ 재배양</text>
+  <rect x="864" y="52" width="86" height="24" rx="5" fill="#7c6cff"/><text x="874" y="69" fill="#fff" font-size="12">🧠 AI 추천</text>
+
+  <!-- ===== graph stage ===== -->
+  <rect x="308" y="86" width="652" height="690" fill="url(#stage)"/>
+  <ellipse cx="634" cy="430" rx="300" ry="270" fill="url(#membrane)"/>
+  <path d="M 634 180 Q 870 230 880 430 Q 870 660 634 690 Q 400 660 388 430 Q 400 230 634 180 Z"
+        fill="none" stroke="#a78bfa" stroke-opacity="0.22" stroke-width="1.5"/>
+
+  <!-- links -->
+  <g stroke-linecap="round">
+    <line x1="560" y1="330" x2="470" y2="470" stroke="#7c6cff" stroke-opacity="0.35" stroke-width="2"/>
+    <line x1="560" y1="330" x2="700" y2="300" stroke="#7c6cff" stroke-opacity="0.18" stroke-width="1"/>
+    <line x1="470" y1="470" x2="560" y2="560" stroke="#e2a04a" stroke-opacity="0.30" stroke-width="2"/>
+    <line x1="700" y1="300" x2="760" y2="460" stroke="#4ec9a0" stroke-opacity="0.20" stroke-width="1.2"/>
+    <line x1="560" y1="560" x2="760" y2="460" stroke="#5aa9e6" stroke-opacity="0.15" stroke-width="1"/>
+  </g>
+
+  <!-- trait nodes (size=strength·members) -->
+  <g filter="url(#glow)">
+    <!-- merged: tense·article (grammar) big -->
+    <circle cx="560" cy="330" r="46" fill="url(#gPur)"/>
+    <!-- diverged: th-sound (pronunciation) -->
+    <circle cx="470" cy="470" r="34" fill="url(#gOra)"/>
+    <!-- r-l (pronunciation) -->
+    <circle cx="560" cy="560" r="26" fill="url(#gOra)"/>
+    <!-- vocabulary -->
+    <circle cx="700" cy="300" r="30" fill="url(#gGrn)"/>
+    <!-- fluency -->
+    <circle cx="760" cy="460" r="24" fill="url(#gBlu)"/>
+    <!-- decaying single (small, faint) -->
+    <circle cx="430" cy="350" r="12" fill="url(#gRed)" opacity="0.55"/>
+  </g>
+  <!-- member-count rings -->
+  <g fill="none" stroke="#dcddde" stroke-opacity="0.35" stroke-width="1.5">
+    <path d="M 560 284 A 46 46 0 0 1 600 354"/>
+    <path d="M 470 436 A 34 34 0 0 1 500 488"/>
+  </g>
+  <!-- labels -->
+  <g fill="#fff" font-size="12" text-anchor="middle">
+    <text x="560" y="334" font-weight="600">tense · article</text>
+    <text x="470" y="474">th-sound</text>
+    <text x="560" y="564" font-size="10">r-l</text>
+    <text x="700" y="304" font-size="11">phrasal-verbs</text>
+    <text x="760" y="464" font-size="10">fluency</text>
+  </g>
+
+  <!-- floating event badges -->
+  <g font-size="11" text-anchor="middle">
+    <rect x="500" y="392" width="118" height="20" rx="10" fill="#7c6cff" fill-opacity="0.22"/><text x="559" y="406" fill="#a78bfa">융합: tense·article</text>
+    <rect x="438" y="512" width="150" height="20" rx="10" fill="#e2a04a" fill-opacity="0.22"/><text x="513" y="526" fill="#e2a04a">분기: th-sound ⟂ r-l</text>
+  </g>
+
+  <!-- HUD -->
+  <text x="328" y="758" fill="#9a9a9a" font-size="12" fill-opacity="0.7">epoch 7 · 특질 5 · 원본 6 · 고도화 80</text>
+
+  <!-- ===== right side panel ===== -->
+  <rect x="960" y="40" width="320" height="760" fill="#252525"/>
+  <line x1="960" y1="40" x2="960" y2="800" stroke="#383838"/>
+  <g font-family="'Segoe UI',sans-serif">
+    <text x="980" y="74" fill="#dcddde" font-size="13" font-weight="700">고도화 지수 (천재 지수)</text>
+    <rect x="980" y="84" width="280" height="8" rx="4" fill="#333"/>
+    <rect x="980" y="84" width="224" height="8" rx="4" fill="#7c6cff"/>
+    <text x="980" y="110" fill="#6a6a6a" font-size="11">Daniel Cho · 특질 5개 · 원본 6개 → 수렴률 17%</text>
+
+    <rect x="980" y="124" width="280" height="150" rx="8" fill="#1f2620" stroke="#2e5d49"/>
+    <text x="994" y="146" fill="#4ec9a0" font-size="12" font-weight="700">🧠 AI 수업 추천 (로컬 LLM)</text>
+    <text x="994" y="170" fill="#dcddde" font-size="12" font-weight="600">발음 — th/r-l 미니멀페어 (88%)</text>
+    <text x="994" y="188" fill="#9a9a9a" font-size="11">섀도잉 5분 + month/three 받아쓰기로</text>
+    <text x="994" y="203" fill="#9a9a9a" font-size="11">/θ/·/r/ 대조 집중 교정.</text>
+    <text x="994" y="228" fill="#dcddde" font-size="12" font-weight="600">문법 — 시제·관사 정확도 (74%)</text>
+    <text x="994" y="246" fill="#9a9a9a" font-size="11">압박 발화 중 관사 누락 교정 드릴.</text>
+    <text x="994" y="266" fill="#dcddde" font-size="12" font-weight="600">유창성 — 즉흥 발화 (70%)</text>
+
+    <text x="980" y="306" fill="#dcddde" font-size="13" font-weight="700">진화 로그</text>
+    <g font-size="11">
+      <rect x="980" y="316" width="34" height="16" rx="8" fill="#7c6cff" fill-opacity="0.22"/><text x="997" y="328" fill="#a78bfa" text-anchor="middle">융합</text>
+      <text x="1022" y="328" fill="#9a9a9a">tense · article ×3</text>
+      <rect x="980" y="338" width="34" height="16" rx="8" fill="#e2a04a" fill-opacity="0.22"/><text x="997" y="350" fill="#e2a04a" text-anchor="middle">분기</text>
+      <text x="1022" y="350" fill="#9a9a9a">th-sound ⟂ r-l</text>
+      <rect x="980" y="360" width="34" height="16" rx="8" fill="#e35d6a" fill-opacity="0.20"/><text x="997" y="372" fill="#e35d6a" text-anchor="middle">도태</text>
+      <text x="1022" y="372" fill="#9a9a9a">over-explaining</text>
+    </g>
+
+    <text x="980" y="410" fill="#dcddde" font-size="13" font-weight="700">특질 (Traits)</text>
+    <g>
+      <rect x="980" y="420" width="280" height="58" rx="8" fill="#1f1f1f" stroke="#383838"/>
+      <text x="994" y="440" fill="#dcddde" font-size="12" font-weight="600">tense · article</text>
+      <text x="1246" y="440" fill="#7c6cff" font-size="11" text-anchor="end">grammar</text>
+      <text x="994" y="457" fill="#9a9a9a" font-size="11">tense, article, present-perfect</text>
+      <text x="994" y="471" fill="#7a7a7a" font-size="11">관찰 3개 · 강도 78%</text>
+      <rect x="994" y="474" width="252" height="4" rx="2" fill="#2a2a2a"/><rect x="994" y="474" width="197" height="4" rx="2" fill="#7c6cff"/>
+
+      <rect x="980" y="486" width="280" height="58" rx="8" fill="#1f1f1f" stroke="#383838"/>
+      <text x="994" y="506" fill="#dcddde" font-size="12" font-weight="600">th-sound · error</text>
+      <text x="1246" y="506" fill="#e2a04a" font-size="11" text-anchor="end">pronunciation</text>
+      <text x="994" y="523" fill="#9a9a9a" font-size="11">th-sound, voiceless, minimal-pair</text>
+      <text x="994" y="537" fill="#7a7a7a" font-size="11">관찰 3개 · 강도 71%</text>
+      <rect x="994" y="540" width="252" height="4" rx="2" fill="#2a2a2a"/><rect x="994" y="540" width="179" height="4" rx="2" fill="#e2a04a"/>
+    </g>
+  </g>
+
+  <!-- status bar -->
+  <rect x="48" y="776" width="1232" height="24" fill="#1a1a1a"/>
+  <text x="64" y="792" fill="#6a6a6a" font-size="11">Amoeba System · 학생 3명 · 노트 28 · 로컬 GPU(Ollama) 연결됨 · nomic-embed-text</text>
+
+  <!-- mockup label -->
+  <rect x="980" y="8" width="170" height="22" rx="11" fill="#e35d6a" fill-opacity="0.25"/>
+  <text x="1065" y="23" fill="#f0969f" font-size="11" text-anchor="middle">설계 시안 (실 스크린샷 아님)</text>
+</svg>
